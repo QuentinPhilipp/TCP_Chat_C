@@ -5,97 +5,106 @@
 #include <string.h> 
 #include <sys/socket.h> 
 #include <sys/types.h> 
-#define MAX 80 
+#define MAXCHAR 200 
 #define SA struct sockaddr 
 
-// Function designed for chat between client and server. 
-void func(int sockfd) 
+// Fonction pour le chat
+void chatFunction(int chatSocket) 
 { 
-	char buff[MAX]; 
+	char buff[MAXCHAR]; 
 	int n; 
-	// infinite loop for chat 
+
 	for (;;) { 
-		bzero(buff, MAX); 
 
-		// read the message from client and copy it in buffer 
-		read(sockfd, buff, sizeof(buff)); 
-		// print buffer which contains the client contents 
-		printf("From client: %s\t To client : ", buff); 
-		bzero(buff, MAX); 
+		//vide le buffer
+		memset(buff, 0, MAXCHAR);
+
+		// Le message du client est mis dans le buffer
+		read(chatSocket, buff, sizeof(buff)); 
+
+		// On affiche le buffer
+		printf("Message reçu: %s", buff); 
+
+		//On prepare un nouvel envoie
+		printf("Votre message: ");
+		//reset buffer
+		memset(buff, 0, MAXCHAR); 
 		n = 0; 
-		// copy server message in the buffer 
-		while ((buff[n++] = getchar()) != '\n') 
-			; 
 
-		// and send that buffer to client 
-		write(sockfd, buff, sizeof(buff)); 
+		// Pendant que l'on tape, on ajoute les char dans le buffer
+		while(1)
+		{
+			buff[n] = getchar();
 
-		// if msg contains "Exit" then server exit and chat ended. 
-		if (strncmp("exit", buff, 4) == 0) { 
-			printf("Server Exit...\n"); 
-			break; 
+			//fin de la boucle au moment ou l'on appuie sur Entree
+			if(buff[n]=='\n')		
+			{
+				break;
+			}
+			n++;
 		} 
+
+		// Envoie du buffer au client
+		write(chatSocket, buff, sizeof(buff)); 
 	} 
 } 
 
-// Driver function 
+// Main function
 int main(int argc,char* argv[]) 
 { 
-	int sockfd, connfd, len; 
+	//definition des variables
+	int serverSocket, chatSocket, len; 
 	struct sockaddr_in servaddr, cli; 
 
-	// socket create and verification 
-	sockfd = socket(AF_INET, SOCK_STREAM, 0); 
-	if (sockfd == -1) { 
+	// Création du socket serveur
+	serverSocket = socket(AF_INET, SOCK_STREAM, 0); 
+	if (serverSocket == -1) { 
 		printf("Socket fail\n"); 
 	} 
-	else
-		printf("Socket OK\n"); 		
 	
-	// bzero(&servaddr, sizeof(servaddr)); 
-
-    int port = 2000; 
+    int port; 
 
 	if(argc==2) 
     { 
         port = atoi(argv[1]);
 		printf("%d\n",port);
+
+		//assignation du port et de l'ip a l'objet
+		servaddr.sin_family = AF_INET; 
+		servaddr.sin_addr.s_addr = htonl(INADDR_ANY); 
+		servaddr.sin_port = htons(port); 
     } 
+	else 
+	{
+		printf("Executez ./server port\n");		//Erreur dans la commande
+		exit(0);
+	}
 
-	// assign IP, PORT 
-	servaddr.sin_family = AF_INET; 
-	servaddr.sin_addr.s_addr = htonl(INADDR_ANY); 
-	servaddr.sin_port = htons(port); 
-
-	// Binding newly created socket to given IP and verification 
-	if ((bind(sockfd, (SA*)&servaddr, sizeof(servaddr))) != 0) { 
-		printf("socket bind failed...\n"); 
+	// Bind le socket a l'adresse IP donnée
+	if ((bind(serverSocket, (SA*)&servaddr, sizeof(servaddr))) != 0) { 
+		printf("Erreur de binding du socket\n"); //Verification
+		exit(0); 
+	} 
+	
+	// Serveur prêt à l'ecoute
+	if ((listen(serverSocket, 1)) != 0) { 
+		printf("Erreur ecoute\n"); 
 		exit(0); 
 	} 
 	else
-		printf("Socket successfully binded..\n"); 
+		printf("Le serveur est prêt a recevoir des messages\n"); 
 
-	// Now server is ready to listen and verification 
-	if ((listen(sockfd, 5)) != 0) { 
-		printf("Listen failed...\n"); 
+	len = sizeof(cli);
+
+	// Acceptation du client et creation du socket de chat
+	chatSocket = accept(serverSocket, (struct sockaddr *)&cli, &len);
+	if (chatSocket < 0) { 
+		printf("Erreur acceptation du client\n"); 
 		exit(0); 
 	} 
 	else
-		printf("Server listening..\n"); 
-	len = sizeof(cli); 
+		printf("Nouveau client connecté\n"); 
 
-	// Accept the data packet from client and verification 
-	connfd = accept(sockfd, (SA*)&cli, &len); 
-	if (connfd < 0) { 
-		printf("server acccept failed...\n"); 
-		exit(0); 
-	} 
-	else
-		printf("server acccept the client...\n"); 
-
-	// Function for chatting between client and server 
-	func(connfd); 
-
-	// After chatting close the socket 
-	close(sockfd); 
+	// Demarrage du chat
+	chatFunction(chatSocket); 
 } 
