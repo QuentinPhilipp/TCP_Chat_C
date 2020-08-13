@@ -1,9 +1,12 @@
 #TCP_Chat_C
 
 
-Compilez avec 'make' en etant dans le bon dossier
+Start the server : 
 
-Lancez le serveur './server port'
-Lancez le client sur un autre terminal './client ipServeur portServeur'
+    ./server port
 
-Ca marche sur le meme reseau, pas testé sur deux réseaux distants (Je pense que ça marche pas, ou alors il faut rediriger correctement les ports vers les bonnes machines.
+Start the client :
+
+    ./client ipServer portServer
+
+Work on the same network (local). Didn't try outside of the network. Probably error because the computer might not be reachable from Internet. ( Port forwarding ?)
